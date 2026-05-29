@@ -24,10 +24,9 @@ function Inventory({ shop }) {
   };
 
   const loadCategories = () => {
-    const stored = localStorage.getItem(CATEGORIES_KEY);
-    const cats = stored ? JSON.parse(stored) : [];
-    // Categories loaded but not needed in this component
-  };
+  const stored = localStorage.getItem(CATEGORIES_KEY);
+  // Categories loaded but not needed in this component
+};
 
   const updateStats = (items) => {
     let total = 0;
