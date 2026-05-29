@@ -13,13 +13,13 @@ function SalesReport({ shop }) {
 
   const SALES_HISTORY_KEY = `salesHistory_${shop}`;
 
-  useEffect(() => {
-    loadSalesHistory();
-  }, [shop]);
+ useEffect(() => {
+  loadSalesHistory();
+}, [shop]); // eslint-disable-next-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    filterAndSummarize();
-  }, [salesHistory, reportType]);
+ useEffect(() => {
+  filterAndSummarize();
+}, [salesHistory, reportType]); // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const loadSalesHistory = () => {
     const stored = localStorage.getItem(SALES_HISTORY_KEY);

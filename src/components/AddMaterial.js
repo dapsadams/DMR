@@ -14,9 +14,9 @@ function AddMaterial({ shop }) {
   const STORAGE_KEY = `materials_${shop}`;
   const CATEGORIES_KEY = `categories_${shop}`;
 
-  useEffect(() => {
+useEffect(() => {
   loadCategories();
-}, [shop, formData.category]);
+}, [shop]); // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const loadCategories = () => {
     const stored = localStorage.getItem(CATEGORIES_KEY);

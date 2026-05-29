@@ -3,7 +3,7 @@ import StockRemovalModal from './StockRemovalModal';
 
 function Inventory({ shop }) {
 const [materials, setMaterials] = useState([]);
-const [categories, setCategories] = useState([]);
+// const [categories, setCategories] = useState([]);
 const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [stats, setStats] = useState({ total: 0, lowStock: 0, outOfStock: 0 });
@@ -17,10 +17,10 @@ const [searchTerm, setSearchTerm] = useState('');
   const STORAGE_KEY = `materials_${shop}`;
   const CATEGORIES_KEY = `categories_${shop}`;
 
-  useEffect(() => {
-    loadMaterials();
-    loadCategories();
-  }, [shop]);
+ useEffect(() => {
+  loadMaterials();
+  loadCategories();
+}, [shop]); // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const loadMaterials = () => {
     const stored = localStorage.getItem(STORAGE_KEY);

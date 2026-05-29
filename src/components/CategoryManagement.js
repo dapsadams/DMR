@@ -22,9 +22,9 @@ function CategoryManagement({ shop }) {
     '🎁'
   ];
 
-  useEffect(() => {
-    loadCategories();
-  }, [shop]);
+ useEffect(() => {
+  loadCategories();
+}, [shop]); // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const loadCategories = () => {
     const stored = localStorage.getItem(CATEGORIES_KEY);
