@@ -9,13 +9,13 @@
     "axios": "^1.4.0",
     "web-vitals": "^2.1.4"
   },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "deploy": "npm run build && netlify deploy --prod"
-  },
+ "scripts": {
+  "start": "react-scripts start",
+  "build": "CI=false react-scripts build",
+  "test": "react-scripts test",
+  "eject": "react-scripts eject",
+  "deploy": "npm run build && netlify deploy --prod"
+},
   "eslintConfig": {
     "extends": [
       "react-app"
