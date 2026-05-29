@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import StockRemovalModal from './StockRemovalModal';
 
 function Inventory({ shop }) {
-const [materials, setMaterials] = useState([]);
-// const [categories, setCategories] = useState([]);
-const [searchTerm, setSearchTerm] = useState('');
+  const [materials, setMaterials] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [stats, setStats] = useState({ total: 0, lowStock: 0, outOfStock: 0 });
   const [modal, setModal] = useState({
@@ -17,11 +16,6 @@ const [searchTerm, setSearchTerm] = useState('');
   const STORAGE_KEY = `materials_${shop}`;
   const CATEGORIES_KEY = `categories_${shop}`;
 
- useEffect(() => {
-  loadMaterials();
-  loadCategories();
-}, [shop]); // eslint-disable-next-line react-hooks/exhaustive-deps
-
   const loadMaterials = () => {
     const stored = localStorage.getItem(STORAGE_KEY);
     const items = stored ? JSON.parse(stored) : [];
@@ -32,7 +26,7 @@ const [searchTerm, setSearchTerm] = useState('');
   const loadCategories = () => {
     const stored = localStorage.getItem(CATEGORIES_KEY);
     const cats = stored ? JSON.parse(stored) : [];
-    setCategories(cats);
+    // Categories loaded but not needed in this component
   };
 
   const updateStats = (items) => {
@@ -54,6 +48,12 @@ const [searchTerm, setSearchTerm] = useState('');
     setStats({ total, lowStock, outOfStock });
   };
 
+  useEffect(() => {
+    loadMaterials();
+    loadCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shop]);
+
   const handleStockChange = (materialId, variantIndex, action) => {
     if (action === 'decrease') {
       setModal({ active: true, materialId, variantIndex, reason: null });
@@ -71,7 +71,6 @@ const [searchTerm, setSearchTerm] = useState('');
           newVariants[variantIndex].quantity + change
         );
 
-        // Record sale if stock decreased
         if (change < 0) {
           recordSale(m, variantIndex, Math.abs(change), reason);
         }
@@ -114,7 +113,6 @@ const [searchTerm, setSearchTerm] = useState('');
     sales[today].push(saleRecord);
     localStorage.setItem(SALES_KEY, JSON.stringify(sales));
 
-    // Also add to history
     const history = JSON.parse(localStorage.getItem(SALES_HISTORY_KEY) || '[]');
     history.push(saleRecord);
     localStorage.setItem(SALES_HISTORY_KEY, JSON.stringify(history));

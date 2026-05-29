@@ -22,7 +22,7 @@ function CategoryManagement({ shop }) {
     '🎁'
   ];
 
- useEffect(() => {
+useEffect(() => {
   loadCategories();
 }, [shop]); // eslint-disable-next-line react-hooks/exhaustive-deps
 
