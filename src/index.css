@@ -930,4 +930,73 @@ body {
   .report-table td {
     padding: 8px;
   }
+}/* Color Picker Styles */
+.color-picker-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  grid-column: 1 / -1;
+}
+
+.color-picker-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.color-picker-controls label {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.color-picker-controls input[type="color"] {
+  width: 50px;
+  height: 40px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.color-picker-controls input[type="color"]:hover {
+  border-color: #667eea;
+}
+
+.color-value {
+  font-family: monospace;
+  font-size: 12px;
+  color: #666;
+  background: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.color-preview {
+  width: 60px;
+  height: 40px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Update color-input-group to accommodate new layout */
+.color-input-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 15px;
+  padding: 15px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.color-input-group input {
+  width: 100%;
 }

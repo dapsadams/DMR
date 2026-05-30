@@ -6,7 +6,7 @@ function AddMaterial({ shop }) {
     category: '',
     unit: 'yards',
     lowStockWarning: 5,
-    variants: [{ color: '', quantity: 0, costPrice: 0, sellingPrice: 0 }]
+    variants: [{ color: '', colorHex: '#FF0000', quantity: 0, costPrice: 0, sellingPrice: 0 }]
   });
   const [categories, setCategories] = useState([]);
   const [successMessage, setSuccessMessage] = useState('');
@@ -14,9 +14,9 @@ function AddMaterial({ shop }) {
   const STORAGE_KEY = `materials_${shop}`;
   const CATEGORIES_KEY = `categories_${shop}`;
 
-useEffect(() => {
-  loadCategories();
-}, [shop]); // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    loadCategories();
+  }, [shop]); // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const loadCategories = () => {
     const stored = localStorage.getItem(CATEGORIES_KEY);
@@ -40,8 +40,16 @@ useEffect(() => {
     newVariants[index] = {
       ...newVariants[index],
       [field]:
-        field === 'quantity' ? parseInt(value) || 0 : parseFloat(value) || 0
+        field === 'quantity' ? parseInt(value) || 0 : 
+        field === 'color' ? value :
+        parseFloat(value) || 0
     };
+    setFormData(prev => ({ ...prev, variants: newVariants }));
+  };
+
+  const handleColorChange = (index, hex) => {
+    const newVariants = [...formData.variants];
+    newVariants[index].colorHex = hex;
     setFormData(prev => ({ ...prev, variants: newVariants }));
   };
 
@@ -50,7 +58,7 @@ useEffect(() => {
       ...prev,
       variants: [
         ...prev.variants,
-        { color: '', quantity: 0, costPrice: 0, sellingPrice: 0 }
+        { color: '', colorHex: '#FF0000', quantity: 0, costPrice: 0, sellingPrice: 0 }
       ]
     }));
   };
@@ -70,7 +78,7 @@ useEffect(() => {
       !formData.category ||
       formData.variants.some(v => !v.color)
     ) {
-      alert('Please fill all required fields');
+      alert('Please fill all required fields (Material name, category, and color names)');
       return;
     }
 
@@ -97,7 +105,7 @@ useEffect(() => {
       category: categories.length > 0 ? categories[0].name : '',
       unit: 'yards',
       lowStockWarning: 5,
-      variants: [{ color: '', quantity: 0, costPrice: 0, sellingPrice: 0 }]
+      variants: [{ color: '', colorHex: '#FF0000', quantity: 0, costPrice: 0, sellingPrice: 0 }]
     });
 
     setTimeout(() => setSuccessMessage(''), 3000);
@@ -162,13 +170,34 @@ useEffect(() => {
           <h3>Color Variants & Pricing</h3>
           {formData.variants.map((variant, idx) => (
             <div key={idx} className="color-input-group">
+              {/* Color Name Input */}
               <input
                 type="text"
-                placeholder="Color name"
+                placeholder="Color name (e.g., Red, Navy Blue)"
                 value={variant.color}
                 onChange={(e) => handleVariantChange(idx, 'color', e.target.value)}
                 required
               />
+
+              {/* Color Picker Section */}
+              <div className="color-picker-section">
+                <div className="color-picker-controls">
+                  <label>Pick Color: </label>
+                  <input
+                    type="color"
+                    value={variant.colorHex}
+                    onChange={(e) => handleColorChange(idx, e.target.value)}
+                  />
+                  <span className="color-value">{variant.colorHex}</span>
+                </div>
+                <div 
+                  className="color-preview"
+                  style={{ backgroundColor: variant.colorHex }}
+                  title={`Color: ${variant.colorHex}`}
+                />
+              </div>
+
+              {/* Quantity */}
               <input
                 type="number"
                 placeholder="Initial Qty"
@@ -176,6 +205,8 @@ useEffect(() => {
                 onChange={(e) => handleVariantChange(idx, 'quantity', e.target.value)}
                 min="0"
               />
+
+              {/* Cost Price */}
               <input
                 type="number"
                 placeholder="Cost Price (₦)"
@@ -186,6 +217,8 @@ useEffect(() => {
                 min="0"
                 step="0.01"
               />
+
+              {/* Selling Price */}
               <input
                 type="number"
                 placeholder="Selling Price (₦)"
@@ -196,11 +229,13 @@ useEffect(() => {
                 min="0"
                 step="0.01"
               />
+
+              {/* Remove Button */}
               {formData.variants.length > 1 && (
                 <button
                   type="button"
                   onClick={() => removeVariant(idx)}
-                  style={{ background: '#e74c3c', color: 'white' }}
+                  style={{ background: '#e74c3c', color: 'white', gridColumn: '1 / -1' }}
                 >
                   Remove Color
                 </button>
