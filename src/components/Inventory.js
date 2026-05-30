@@ -24,9 +24,10 @@ function Inventory({ shop }) {
   };
 
   const loadCategories = () => {
-  const stored = localStorage.getItem(CATEGORIES_KEY);
-  // Categories loaded but not needed in this component
-};
+    const stored = localStorage.getItem(CATEGORIES_KEY);
+    // not used directly here
+    console.log(stored);
+  };
 
   const updateStats = (items) => {
     let total = 0;
@@ -36,11 +37,8 @@ function Inventory({ shop }) {
     items.forEach(material => {
       material.variants.forEach(variant => {
         total++;
-        if (variant.quantity === 0) {
-          outOfStock++;
-        } else if (variant.quantity <= material.lowStockWarning) {
-          lowStock++;
-        }
+        if (variant.quantity === 0) outOfStock++;
+        else if (variant.quantity <= material.lowStockWarning) lowStock++;
       });
     });
 
@@ -65,10 +63,8 @@ function Inventory({ shop }) {
     const newMaterials = materials.map(m => {
       if (m.id === materialId) {
         const newVariants = [...m.variants];
-        newVariants[variantIndex].quantity = Math.max(
-          0,
-          newVariants[variantIndex].quantity + change
-        );
+        const currentQty = newVariants[variantIndex].quantity;
+        newVariants[variantIndex].quantity = Math.max(0, currentQty + change);
 
         if (change < 0) {
           recordSale(m, variantIndex, Math.abs(change), reason);
@@ -84,6 +80,32 @@ function Inventory({ shop }) {
     updateStats(newMaterials);
   };
 
+  const handleQuickAdjust = (materialId, variantIndex, amount) => {
+    const material = materials.find(m => m.id === materialId);
+    if (!material) return;
+
+    const currentQty = material.variants[variantIndex].quantity;
+    const newQty = Math.max(0, currentQty + amount);
+    const delta = newQty - currentQty;
+
+    updateStock(materialId, variantIndex, delta, delta < 0 ? 'Adjusted' : 'Added');
+  };
+
+  const handleEditQuantity = (materialId, variantIndex, value) => {
+    const material = materials.find(m => m.id === materialId);
+    if (!material) return;
+
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed) || parsed < 0) return;
+
+    const currentQty = material.variants[variantIndex].quantity;
+    const delta = parsed - currentQty;
+
+    if (delta !== 0) {
+      updateStock(materialId, variantIndex, delta, delta < 0 ? 'Adjusted' : 'Added');
+    }
+  };
+
   const recordSale = (material, variantIndex, quantity, reason) => {
     const SALES_KEY = `sales_${shop}`;
     const SALES_HISTORY_KEY = `salesHistory_${shop}`;
@@ -91,11 +113,10 @@ function Inventory({ shop }) {
     const today = new Date().toISOString().split('T')[0];
     const sales = JSON.parse(localStorage.getItem(SALES_KEY) || '{}');
 
-    if (!sales[today]) {
-      sales[today] = [];
-    }
+    if (!sales[today]) sales[today] = [];
 
     const variant = material.variants[variantIndex];
+
     const saleRecord = {
       id: Date.now(),
       materialId: material.id,
@@ -150,15 +171,11 @@ function Inventory({ shop }) {
         </div>
         <div className="stat-card">
           <h3>Low Stock</h3>
-          <div className="number" style={{ color: '#f39c12' }}>
-            {stats.lowStock}
-          </div>
+          <div className="number" style={{ color: '#f39c12' }}>{stats.lowStock}</div>
         </div>
         <div className="stat-card">
           <h3>Out of Stock</h3>
-          <div className="number" style={{ color: '#e74c3c' }}>
-            {stats.outOfStock}
-          </div>
+          <div className="number" style={{ color: '#e74c3c' }}>{stats.outOfStock}</div>
         </div>
       </div>
 
@@ -173,17 +190,14 @@ function Inventory({ shop }) {
 
       <div className="category-tabs">
         {uniqueCategories.map(cat => {
-          const categoryIcon =
-            cat === 'All'
-              ? '📦'
-              : materials.find(m => m.category === cat)?.categoryEmoji || '📦';
+          const icon = cat === 'All' ? '📦' : materials.find(m => m.category === cat)?.categoryEmoji || '📦';
           return (
             <button
               key={cat}
               className={`category-tab ${selectedCategory === cat ? 'active' : ''}`}
               onClick={() => setSelectedCategory(cat)}
             >
-              {categoryIcon} {cat}
+              {icon} {cat}
             </button>
           );
         })}
@@ -202,18 +216,14 @@ function Inventory({ shop }) {
                     {material.categoryEmoji} {material.category}
                   </div>
                 </div>
-                <button
-                  className="delete-btn"
-                  onClick={() => handleDeleteMaterial(material.id)}
-                >
+                <button className="delete-btn" onClick={() => handleDeleteMaterial(material.id)}>
                   Delete
                 </button>
               </div>
 
               <div className="color-variants">
                 {material.variants.map((variant, idx) => {
-                  const profit =
-                    (variant.sellingPrice - variant.costPrice) * variant.quantity;
+                  const profit = (variant.sellingPrice - variant.costPrice) * variant.quantity;
                   const stockStatus =
                     variant.quantity === 0
                       ? 'out'
@@ -224,38 +234,50 @@ function Inventory({ shop }) {
                   return (
                     <div key={idx} className="color-variant">
                       <div className="color-name">{variant.color}</div>
+
                       <div className="variant-details">
-                        📏 Qty: {variant.quantity} {material.unit}
-                        <br />
-                        💰 Cost: ₦{variant.costPrice.toFixed(2)}
-                        <br />
-                        🏷️ Sell: ₦{variant.sellingPrice.toFixed(2)}
-                        <br />
-                        📈 Profit/Unit: ₦{(
-                          variant.sellingPrice - variant.costPrice
-                        ).toFixed(2)}
-                        <br />
+                        📏 Qty: {variant.quantity} {material.unit}<br />
+                        💰 Cost: ₦{variant.costPrice.toFixed(2)}<br />
+                        🏷️ Sell: ₦{variant.sellingPrice.toFixed(2)}<br />
+                        📈 Profit/Unit: ₦{(variant.sellingPrice - variant.costPrice).toFixed(2)}<br />
                         💵 Total Profit: ₦{profit.toFixed(2)}
+                      </div>
+
+                      <div className="edit-qty-box">
+                        <label>Qty</label>
+                        <input
+                          type="number"
+                          min="0"
+                          defaultValue={variant.quantity}
+                          onBlur={(e) => handleEditQuantity(material.id, idx, e.target.value)}
+                        />
                       </div>
 
                       <div className="stock-controls">
                         <button
                           className="stock-btn decrease"
-                          onClick={() =>
-                            handleStockChange(material.id, idx, 'decrease')
-                          }
+                          onClick={() => handleStockChange(material.id, idx, 'decrease')}
                         >
                           −
                         </button>
+
                         <div className="stock-display">{variant.quantity}</div>
+
                         <button
                           className="stock-btn increase"
-                          onClick={() =>
-                            handleStockChange(material.id, idx, 'increase')
-                          }
+                          onClick={() => handleStockChange(material.id, idx, 'increase')}
                         >
                           +
                         </button>
+                      </div>
+
+                      <div className="bulk-controls">
+                        <button className="bulk-btn" onClick={() => handleQuickAdjust(material.id, idx, -10)}>-10</button>
+                        <button className="bulk-btn" onClick={() => handleQuickAdjust(material.id, idx, -5)}>-5</button>
+                        <button className="bulk-btn" onClick={() => handleQuickAdjust(material.id, idx, -1)}>-1</button>
+                        <button className="bulk-btn" onClick={() => handleQuickAdjust(material.id, idx, 1)}>+1</button>
+                        <button className="bulk-btn" onClick={() => handleQuickAdjust(material.id, idx, 5)}>+5</button>
+                        <button className="bulk-btn" onClick={() => handleQuickAdjust(material.id, idx, 10)}>+10</button>
                       </div>
 
                       <div className={`stock-status ${stockStatus}`}>

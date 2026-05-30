@@ -6,7 +6,9 @@ function AddMaterial({ shop }) {
     category: '',
     unit: 'yards',
     lowStockWarning: 5,
-    variants: [{ color: '', colorHex: '#FF0000', quantity: 0, costPrice: 0, sellingPrice: 0 }]
+    variants: [
+      { color: '', colorHex: '#FF0000', quantity: 0, costPrice: 0, sellingPrice: 0 }
+    ]
   });
   const [categories, setCategories] = useState([]);
   const [successMessage, setSuccessMessage] = useState('');
@@ -16,12 +18,14 @@ function AddMaterial({ shop }) {
 
   useEffect(() => {
     loadCategories();
-  }, [shop]); // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shop]);
 
   const loadCategories = () => {
     const stored = localStorage.getItem(CATEGORIES_KEY);
     const cats = stored ? JSON.parse(stored) : [];
     setCategories(cats);
+
     if (cats.length > 0 && !formData.category) {
       setFormData(prev => ({ ...prev, category: cats[0].name }));
     }
@@ -40,9 +44,11 @@ function AddMaterial({ shop }) {
     newVariants[index] = {
       ...newVariants[index],
       [field]:
-        field === 'quantity' ? parseInt(value) || 0 : 
-        field === 'color' ? value :
-        parseFloat(value) || 0
+        field === 'quantity'
+          ? parseInt(value) || 0
+          : field === 'costPrice' || field === 'sellingPrice'
+          ? parseFloat(value) || 0
+          : value
     };
     setFormData(prev => ({ ...prev, variants: newVariants }));
   };
@@ -73,12 +79,8 @@ function AddMaterial({ shop }) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (
-      !formData.name ||
-      !formData.category ||
-      formData.variants.some(v => !v.color)
-    ) {
-      alert('Please fill all required fields (Material name, category, and color names)');
+    if (!formData.name || !formData.category || formData.variants.some(v => !v.color)) {
+      alert('Please fill all required fields');
       return;
     }
 
@@ -168,36 +170,31 @@ function AddMaterial({ shop }) {
 
         <div className="color-variants-input">
           <h3>Color Variants & Pricing</h3>
+
           {formData.variants.map((variant, idx) => (
             <div key={idx} className="color-input-group">
-              {/* Color Name Input */}
               <input
                 type="text"
-                placeholder="Color name (e.g., Red, Navy Blue)"
+                placeholder="Color name (e.g. Red, Navy Blue)"
                 value={variant.color}
                 onChange={(e) => handleVariantChange(idx, 'color', e.target.value)}
                 required
               />
 
-              {/* Color Picker Section */}
-              <div className="color-picker-section">
-                <div className="color-picker-controls">
-                  <label>Pick Color: </label>
-                  <input
-                    type="color"
-                    value={variant.colorHex}
-                    onChange={(e) => handleColorChange(idx, e.target.value)}
-                  />
-                  <span className="color-value">{variant.colorHex}</span>
-                </div>
-                <div 
+              <div className="color-picker-section full-span">
+                <label>Pick Color</label>
+                <input
+                  type="color"
+                  value={variant.colorHex}
+                  onChange={(e) => handleColorChange(idx, e.target.value)}
+                />
+                <span className="color-value">{variant.colorHex}</span>
+                <div
                   className="color-preview"
                   style={{ backgroundColor: variant.colorHex }}
-                  title={`Color: ${variant.colorHex}`}
                 />
               </div>
 
-              {/* Quantity */}
               <input
                 type="number"
                 placeholder="Initial Qty"
@@ -206,31 +203,24 @@ function AddMaterial({ shop }) {
                 min="0"
               />
 
-              {/* Cost Price */}
               <input
                 type="number"
                 placeholder="Cost Price (₦)"
                 value={variant.costPrice}
-                onChange={(e) =>
-                  handleVariantChange(idx, 'costPrice', e.target.value)
-                }
+                onChange={(e) => handleVariantChange(idx, 'costPrice', e.target.value)}
                 min="0"
                 step="0.01"
               />
 
-              {/* Selling Price */}
               <input
                 type="number"
                 placeholder="Selling Price (₦)"
                 value={variant.sellingPrice}
-                onChange={(e) =>
-                  handleVariantChange(idx, 'sellingPrice', e.target.value)
-                }
+                onChange={(e) => handleVariantChange(idx, 'sellingPrice', e.target.value)}
                 min="0"
                 step="0.01"
               />
 
-              {/* Remove Button */}
               {formData.variants.length > 1 && (
                 <button
                   type="button"
@@ -242,6 +232,7 @@ function AddMaterial({ shop }) {
               )}
             </div>
           ))}
+
           <button type="button" onClick={addVariant} className="add-color-btn">
             + Add Another Color
           </button>

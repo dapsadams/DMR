@@ -1000,3 +1000,101 @@ body {
 .color-input-group input {
   width: 100%;
 }
+.color-input-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 15px;
+  padding: 15px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.full-span {
+  grid-column: 1 / -1;
+}
+
+.color-picker-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.color-picker-section label {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.color-picker-section input[type="color"] {
+  width: 48px;
+  height: 38px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.color-value {
+  font-size: 12px;
+  color: #666;
+  background: #fff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-family: monospace;
+}
+
+.color-preview {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.edit-qty-box {
+  margin: 10px 0;
+}
+
+.edit-qty-box label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #555;
+}
+
+.edit-qty-box input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+.bulk-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.bulk-btn {
+  padding: 6px 8px;
+  border: 1px solid #667eea;
+  background: #fff;
+  color: #667eea;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.bulk-btn:hover {
+  background: #667eea;
+  color: #fff;
+}
