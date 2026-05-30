@@ -1098,3 +1098,146 @@ body {
   background: #667eea;
   color: #fff;
 }
+/* Color Variant Section */
+.color-variant-section {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 2px solid #ddd;
+  margin-bottom: 15px;
+}
+
+.color-variant-section .form-group {
+  margin-bottom: 15px;
+}
+
+.color-variant-section .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+/* Full Width Form Group */
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+/* Color Picker Section */
+.color-picker-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 6px;
+}
+
+.color-picker-section input[type="color"] {
+  width: 50px;
+  height: 40px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.color-picker-section input[type="color"]:hover {
+  border-color: #667eea;
+}
+
+.color-value {
+  font-family: monospace;
+  font-size: 12px;
+  color: #666;
+  background: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  min-width: 80px;
+  text-align: center;
+}
+
+.color-preview-large {
+  width: 80px;
+  height: 50px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Profit Display */
+.profit-display {
+  font-size: 20px;
+  font-weight: 700;
+  color: #27ae60;
+  padding: 15px;
+  background: #d4edda;
+  border-radius: 8px;
+  text-align: center;
+  border: 2px solid #27ae60;
+}
+
+/* Remove Variant Button */
+.remove-variant-btn {
+  width: 100%;
+  padding: 10px;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s;
+  margin-top: 10px;
+}
+
+.remove-variant-btn:hover {
+  background: #c0392b;
+  transform: translateY(-2px);
+}
+
+/* Add Color Button */
+.add-color-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 20px;
+}
+
+.add-color-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Submit Button */
+.submit-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.submit-btn:active {
+  transform: translateY(0);
+}
