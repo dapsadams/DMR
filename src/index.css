@@ -1241,3 +1241,155 @@ body {
 .submit-btn:active {
   transform: translateY(0);
 }
+/* Edit Price Modal */
+.edit-price-modal {
+  max-width: 500px;
+}
+
+.edit-price-info {
+  background: #f9f9f9;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border-left: 4px solid #667eea;
+}
+
+.edit-price-info p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.edit-price-info strong {
+  color: #667eea;
+}
+
+.edit-price-form {
+  margin-bottom: 20px;
+}
+
+.edit-price-form .form-group {
+  margin-bottom: 15px;
+}
+
+.edit-price-form .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.edit-price-form input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.edit-price-form input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.profit-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 2px solid #ddd;
+}
+
+/* Price History */
+.price-history {
+  background: #f0f4ff;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  border: 2px solid #e0e7ff;
+}
+
+.price-history h4 {
+  color: #667eea;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.history-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.history-item {
+  background: white;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border-left: 3px solid #27ae60;
+  font-size: 12px;
+}
+
+.history-date {
+  font-weight: 600;
+  color: #667eea;
+  margin-bottom: 5px;
+}
+
+.history-prices {
+  color: #666;
+  margin: 3px 0;
+}
+
+.history-more {
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  padding: 10px;
+  font-style: italic;
+}
+
+.last-edit-info {
+  background: #fff3cd;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #856404;
+  margin-bottom: 15px;
+  border-left: 3px solid #ffc107;
+}
+
+.save-price-btn {
+  background: #27ae60;
+}
+
+.save-price-btn:hover {
+  background: #229954;
+}
+
+/* Edit Price Button in Inventory */
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.edit-price-btn {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.edit-price-btn:hover {
+  background: #f0f0f0;
+  transform: scale(1.2);
+}
+
+.material-title-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
