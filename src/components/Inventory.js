@@ -560,3 +560,5 @@ function Inventory({ shop }) {
 }
 
 export default Inventory;
+
+// daps?
