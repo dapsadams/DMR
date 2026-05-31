@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { syncMaterials, loadCategoriesFromCloud, syncCategories } from '../utils/syncUtils';
 
 function AddMaterial({ shop }) {
   const [formData, setFormData] = useState({
@@ -18,12 +19,30 @@ function AddMaterial({ shop }) {
     loadCategories();
   }, [shop]); // eslint-disable-next-line react-hooks/exhaustive-deps
 
-  const loadCategories = () => {
-    const stored = localStorage.getItem(CATEGORIES_KEY);
-    const cats = stored ? JSON.parse(stored) : [];
-    setCategories(cats);
-    if (cats.length > 0 && !formData.category) {
-      setFormData(prev => ({ ...prev, category: cats[0].name }));
+  const loadCategories = async () => {
+    try {
+      // Try cloud first
+      const cloudCategories = await loadCategoriesFromCloud(shop);
+      
+      if (cloudCategories && cloudCategories.length > 0) {
+        setCategories(cloudCategories);
+        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(cloudCategories));
+      } else {
+        // Fallback to localStorage
+        const stored = localStorage.getItem(CATEGORIES_KEY);
+        const cats = stored ? JSON.parse(stored) : [];
+        setCategories(cats);
+      }
+
+      if (cloudCategories.length > 0 && !formData.category) {
+        setFormData(prev => ({ ...prev, category: cloudCategories[0].name }));
+      }
+    } catch (error) {
+      console.error('Load categories error:', error);
+      // Use localStorage on error
+      const stored = localStorage.getItem(CATEGORIES_KEY);
+      const cats = stored ? JSON.parse(stored) : [];
+      setCategories(cats);
     }
   };
 
@@ -70,7 +89,7 @@ function AddMaterial({ shop }) {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (
@@ -94,10 +113,18 @@ function AddMaterial({ shop }) {
       createdAt: new Date().toISOString()
     };
 
+    // Save to localStorage
     const stored = localStorage.getItem(STORAGE_KEY);
     const materials = stored ? JSON.parse(stored) : [];
     materials.push(newMaterial);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(materials));
+
+    // Sync to cloud
+    try {
+      await syncMaterials(shop, [newMaterial]);
+    } catch (error) {
+      console.error('Cloud sync error:', error);
+    }
 
     setSuccessMessage('✅ Material added successfully!');
     setFormData({

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import StockRemovalModal from './StockRemovalModal';
 import EditPriceModal from './EditPriceModal';
+import { syncMaterials, loadMaterialsFromCloud, recordSaleToCloud } from '../utils/syncUtils';
 
 function Inventory({ shop }) {
   const [materials, setMaterials] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [stats, setStats] = useState({ total: 0, lowStock: 0, outOfStock: 0 });
+  const [syncStatus, setSyncStatus] = useState('online'); // 'online', 'syncing', 'offline'
   const [modal, setModal] = useState({
     active: false,
     materialId: null,
@@ -24,12 +26,80 @@ function Inventory({ shop }) {
 
   const STORAGE_KEY = `materials_${shop}`;
   const CATEGORIES_KEY = `categories_${shop}`;
+  const LAST_SYNC_KEY = `lastSync_${shop}`;
 
-  const loadMaterials = () => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const items = stored ? JSON.parse(stored) : [];
-    setMaterials(items);
-    updateStats(items);
+  // Load materials from cloud on mount
+  useEffect(() => {
+    loadMaterials();
+    
+    // Auto-sync every 30 seconds
+    const syncInterval = setInterval(() => {
+      if (materials.length > 0) {
+        syncToCloud();
+      }
+    }, 30000);
+
+    return () => clearInterval(syncInterval);
+  }, [shop]);
+
+  // Sync materials whenever they change
+  useEffect(() => {
+    if (materials.length > 0) {
+      // Save to localStorage immediately
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(materials));
+      
+      // Sync to cloud in background
+      syncToCloud();
+    }
+  }, [materials]);
+
+  const loadMaterials = async () => {
+    try {
+      setSyncStatus('syncing');
+      
+      // Try to load from cloud first
+      const cloudMaterials = await loadMaterialsFromCloud(shop);
+      
+      if (cloudMaterials && cloudMaterials.length > 0) {
+        // Cloud has data, use it
+        setMaterials(cloudMaterials);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudMaterials));
+        updateStats(cloudMaterials);
+        setSyncStatus('online');
+      } else {
+        // No cloud data, load from localStorage
+        const stored = localStorage.getItem(STORAGE_KEY);
+        const items = stored ? JSON.parse(stored) : [];
+        setMaterials(items);
+        updateStats(items);
+        setSyncStatus('online');
+      }
+    } catch (error) {
+      console.error('Load error:', error);
+      // No internet, use localStorage
+      const stored = localStorage.getItem(STORAGE_KEY);
+      const items = stored ? JSON.parse(stored) : [];
+      setMaterials(items);
+      updateStats(items);
+      setSyncStatus('offline');
+    }
+  };
+
+  const syncToCloud = async () => {
+    try {
+      setSyncStatus('syncing');
+      const success = await syncMaterials(shop, materials);
+      
+      if (success) {
+        setSyncStatus('online');
+        localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
+      } else {
+        setSyncStatus('offline');
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      setSyncStatus('offline');
+    }
   };
 
   const loadCategories = () => {
@@ -55,12 +125,6 @@ function Inventory({ shop }) {
 
     setStats({ total, lowStock, outOfStock });
   };
-
-  useEffect(() => {
-    loadMaterials();
-    loadCategories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shop]);
 
   const handleStockChange = (materialId, variantIndex, action) => {
     if (action === 'decrease') {
@@ -90,11 +154,10 @@ function Inventory({ shop }) {
     });
 
     setMaterials(newMaterials);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newMaterials));
     setEditPriceModal({ active: false, material: null, variantIndex: null });
   };
 
-  const updateStock = (materialId, variantIndex, change, reason = 'Added') => {
+  const updateStock = async (materialId, variantIndex, change, reason = 'Added') => {
     const newMaterials = materials.map(m => {
       if (m.id === materialId) {
         const newVariants = [...m.variants];
@@ -117,7 +180,7 @@ function Inventory({ shop }) {
     updateStats(newMaterials);
   };
 
-  const recordSale = (material, variantIndex, quantity, reason) => {
+  const recordSale = async (material, variantIndex, quantity, reason) => {
     const SALES_KEY = `sales_${shop}`;
     const SALES_HISTORY_KEY = `salesHistory_${shop}`;
 
@@ -148,6 +211,13 @@ function Inventory({ shop }) {
     const history = JSON.parse(localStorage.getItem(SALES_HISTORY_KEY) || '[]');
     history.push(saleRecord);
     localStorage.setItem(SALES_HISTORY_KEY, JSON.stringify(history));
+
+    // Sync sale to cloud
+    try {
+      await recordSaleToCloud(shop, saleRecord);
+    } catch (error) {
+      console.error('Sale sync error:', error);
+    }
   };
 
   const handleDeleteMaterial = (materialId) => {
@@ -249,8 +319,30 @@ function Inventory({ shop }) {
 
   const uniqueCategories = ['All', ...new Set(materials.map(m => m.category))];
 
+  // Sync Status Indicator
+  const getSyncStatusDisplay = () => {
+    switch (syncStatus) {
+      case 'online':
+        return { icon: '🟢', text: 'Synced', color: '#27ae60' };
+      case 'syncing':
+        return { icon: '🟡', text: 'Syncing...', color: '#f39c12' };
+      case 'offline':
+        return { icon: '🔴', text: 'Offline', color: '#e74c3c' };
+      default:
+        return { icon: '⚪', text: 'Unknown', color: '#999' };
+    }
+  };
+
+  const syncDisplay = getSyncStatusDisplay();
+
   return (
     <>
+      {/* Sync Status Bar */}
+      <div className="sync-status-bar" style={{ borderLeftColor: syncDisplay.color }}>
+        <span className="sync-icon">{syncDisplay.icon}</span>
+        <span className="sync-text">{syncDisplay.text}</span>
+      </div>
+
       <div className="stats-container">
         <div className="stat-card">
           <h3>Total Items</h3>

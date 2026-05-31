@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { syncCategories, loadCategoriesFromCloud } from '../utils/syncUtils';
 
 function CategoryManagement({ shop }) {
   const [categories, setCategories] = useState([]);
@@ -22,25 +23,40 @@ function CategoryManagement({ shop }) {
     '🎁'
   ];
 
-useEffect(() => {
-  loadCategories();
-}, [shop]); // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    loadCategories();
+  }, [shop]);
 
-  const loadCategories = () => {
-    const stored = localStorage.getItem(CATEGORIES_KEY);
-    const cats = stored ? JSON.parse(stored) : [];
-    setCategories(cats);
+  const loadCategories = async () => {
+    try {
+      // Try cloud first
+      const cloudCategories = await loadCategoriesFromCloud(shop);
+      
+      if (cloudCategories && cloudCategories.length > 0) {
+        setCategories(cloudCategories);
+        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(cloudCategories));
+      } else {
+        // Fallback to localStorage
+        const stored = localStorage.getItem(CATEGORIES_KEY);
+        const cats = stored ? JSON.parse(stored) : [];
+        setCategories(cats);
+      }
+    } catch (error) {
+      console.error('Load categories error:', error);
+      // Use localStorage on error
+      const stored = localStorage.getItem(CATEGORIES_KEY);
+      const cats = stored ? JSON.parse(stored) : [];
+      setCategories(cats);
+    }
   };
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (!categoryName.trim()) {
       alert('Please enter a category name');
       return;
     }
 
-    if (
-      categories.some(c => c.name.toLowerCase() === categoryName.toLowerCase())
-    ) {
+    if (categories.some(c => c.name.toLowerCase() === categoryName.toLowerCase())) {
       alert('Category already exists');
       return;
     }
@@ -55,15 +71,29 @@ useEffect(() => {
     setCategories(newCategories);
     localStorage.setItem(CATEGORIES_KEY, JSON.stringify(newCategories));
 
+    // Sync to cloud
+    try {
+      await syncCategories(shop, newCategories);
+    } catch (error) {
+      console.error('Cloud sync error:', error);
+    }
+
     setCategoryName('');
     setSelectedEmoji('📦');
   };
 
-  const handleDeleteCategory = (categoryName) => {
+  const handleDeleteCategory = async (categoryName) => {
     if (window.confirm(`Delete category "${categoryName}"?`)) {
       const newCategories = categories.filter(c => c.name !== categoryName);
       setCategories(newCategories);
       localStorage.setItem(CATEGORIES_KEY, JSON.stringify(newCategories));
+
+      // Sync to cloud
+      try {
+        await syncCategories(shop, newCategories);
+      } catch (error) {
+        console.error('Cloud sync error:', error);
+      }
     }
   };
 
@@ -82,7 +112,7 @@ useEffect(() => {
       </div>
 
       <div>
-        <h3>Select Icon</h3>
+        <h3 style={{ marginBottom: '15px', fontSize: '16px' }}>Select Icon</h3>
         <div className="emoji-grid">
           {emojis.map(emoji => (
             <button
@@ -104,15 +134,11 @@ useEffect(() => {
       <div className="categories-list">
         <h3>Current Categories ({categories.length})</h3>
         {categories.length === 0 ? (
-          <p style={{ color: '#999' }}>
-            No categories yet. Create one to get started!
-          </p>
+          <p style={{ color: '#999' }}>No categories yet. Create one to get started!</p>
         ) : (
           categories.map(cat => (
             <div key={cat.name} className="category-item">
-              <span>
-                {cat.emoji} {cat.name}
-              </span>
+              <span>{cat.emoji} {cat.name}</span>
               <button onClick={() => handleDeleteCategory(cat.name)}>
                 Delete
               </button>
