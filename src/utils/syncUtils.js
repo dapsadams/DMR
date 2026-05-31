@@ -1,68 +1,124 @@
 import { supabase } from '../supabaseClient';
 
-// Sync materials to Supabase
 export const syncMaterials = async (shop, materials) => {
   try {
-    for (const material of materials) {
-      await supabase
-        .from('materials')
-        .upsert(
-          {
-            id: material.id,
-            shop: shop,
-            name: material.name,
-            category: material.category,
-            categoryEmoji: material.categoryEmoji,
-            unit: material.unit,
-            lowStockWarning: material.lowStockWarning,
-            variants: material.variants,
-            updatedAt: new Date().toISOString()
-          },
-          { onConflict: 'id,shop' }
-        );
+    console.log('🔄 Starting sync for shop:', shop);
+    console.log('📦 Materials to sync:', materials);
+
+    if (!materials || materials.length === 0) {
+      console.log('⚠️ No materials to sync');
+      return true;
     }
-    console.log('✅ Materials synced to cloud');
+
+    for (const material of materials) {
+      console.log('📤 Syncing material:', material.name);
+      
+      const payloadData = {
+        id: material.id,
+        shop: shop,
+        name: material.name,
+        category: material.category,
+        categoryEmoji: material.categoryEmoji || '📦',
+        unit: material.unit || 'yards',
+        lowStockWarning: material.lowStockWarning || 5,
+        variants: JSON.stringify(material.variants || []),
+        updatedAt: new Date().toISOString()
+      };
+
+      console.log('📋 Payload:', payloadData);
+
+      const { data, error } = await supabase
+        .from('materials')
+        .insert([payloadData])
+        .select();
+
+      if (error) {
+        console.error('❌ Insert error:', error);
+        
+        // Try update if insert fails
+        const { data: updateData, error: updateError } = await supabase
+          .from('materials')
+          .update(payloadData)
+          .eq('id', material.id)
+          .select();
+
+        if (updateError) {
+          console.error('❌ Update error:', updateError);
+          throw updateError;
+        }
+        
+        console.log('✅ Updated existing material');
+      } else {
+        console.log('✅ Inserted new material:', data);
+      }
+    }
+    
+    console.log('✅ All materials synced successfully');
     return true;
   } catch (error) {
-    console.error('❌ Sync error:', error);
+    console.error('❌ Sync failed:', error);
     return false;
   }
 };
 
-// Load materials from Supabase
 export const loadMaterialsFromCloud = async (shop) => {
   try {
+    console.log('📥 Loading materials from cloud for shop:', shop);
+    
     const { data, error } = await supabase
       .from('materials')
       .select('*')
       .eq('shop', shop);
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Load error:', error);
+      throw error;
+    }
 
-    return data || [];
+    console.log('✅ Loaded from cloud:', data?.length || 0, 'materials');
+    
+    // Parse variants if they're JSON strings
+    const parsed = data?.map(item => ({
+      ...item,
+      variants: typeof item.variants === 'string' ? JSON.parse(item.variants) : item.variants
+    })) || [];
+
+    return parsed;
   } catch (error) {
     console.error('❌ Load error:', error);
     return [];
   }
 };
 
-// Sync categories
 export const syncCategories = async (shop, categories) => {
   try {
+    console.log('🔄 Syncing categories for shop:', shop);
+
     for (const category of categories) {
-      await supabase
+      const { error } = await supabase
         .from('categories')
-        .upsert(
-          {
-            id: `${shop}_${category.name}`,
-            shop: shop,
-            name: category.name,
-            emoji: category.emoji,
-            createdAt: category.createdAt || new Date().toISOString()
-          },
-          { onConflict: 'id' }
-        );
+        .insert([{
+          id: `${shop}_${category.name}`,
+          shop: shop,
+          name: category.name,
+          emoji: category.emoji,
+          createdAt: category.createdAt || new Date().toISOString()
+        }])
+        .select();
+
+      if (error) {
+        console.error('❌ Category insert error:', error);
+        
+        // Try update
+        await supabase
+          .from('categories')
+          .update({
+            emoji: category.emoji
+          })
+          .eq('id', `${shop}_${category.name}`);
+      }
     }
+    
     console.log('✅ Categories synced');
     return true;
   } catch (error) {
@@ -71,9 +127,10 @@ export const syncCategories = async (shop, categories) => {
   }
 };
 
-// Load categories from cloud
 export const loadCategoriesFromCloud = async (shop) => {
   try {
+    console.log('📥 Loading categories for shop:', shop);
+    
     const { data, error } = await supabase
       .from('categories')
       .select('*')
@@ -81,25 +138,29 @@ export const loadCategoriesFromCloud = async (shop) => {
 
     if (error) throw error;
 
-    return data.map(item => ({
+    const formatted = data?.map(item => ({
       name: item.name,
       emoji: item.emoji,
       createdAt: item.createdAt
     })) || [];
+
+    console.log('✅ Loaded categories:', formatted.length);
+    return formatted;
   } catch (error) {
     console.error('❌ Load categories error:', error);
     return [];
   }
 };
 
-// Record a sale
 export const recordSaleToCloud = async (shop, saleRecord) => {
   try {
+    console.log('💰 Recording sale to cloud');
+
     const today = new Date().toISOString().split('T')[0];
 
-    await supabase
+    const { error } = await supabase
       .from('sales')
-      .insert({
+      .insert([{
         id: saleRecord.id,
         shop: shop,
         materialId: saleRecord.materialId,
@@ -107,13 +168,15 @@ export const recordSaleToCloud = async (shop, saleRecord) => {
         color: saleRecord.color,
         quantity: saleRecord.quantity,
         reason: saleRecord.reason,
-        costPrice: saleRecord.costPrice,
-        sellingPrice: saleRecord.sellingPrice,
+        costPrice: parseFloat(saleRecord.costPrice),
+        sellingPrice: parseFloat(saleRecord.sellingPrice),
         timestamp: saleRecord.timestamp,
         date: today
-      });
+      }]);
 
-    console.log('✅ Sale recorded to cloud');
+    if (error) throw error;
+    
+    console.log('✅ Sale recorded');
     return true;
   } catch (error) {
     console.error('❌ Sale record error:', error);
@@ -121,27 +184,29 @@ export const recordSaleToCloud = async (shop, saleRecord) => {
   }
 };
 
-// Record price change
 export const recordPriceChange = async (shop, materialId, variantIndex, change) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const historyId = `${materialId}_${variantIndex}_${Date.now()}`;
+    console.log('📊 Recording price change');
 
-    await supabase
+    const today = new Date().toISOString().split('T')[0];
+
+    const { error } = await supabase
       .from('price_history')
-      .insert({
-        id: historyId,
+      .insert([{
+        id: `${materialId}_${variantIndex}_${Date.now()}`,
         shop: shop,
         materialId: materialId,
         variantIndex: variantIndex,
-        oldCostPrice: change.oldCostPrice,
-        oldSellingPrice: change.oldSellingPrice,
-        newCostPrice: change.newCostPrice,
-        newSellingPrice: change.newSellingPrice,
+        oldCostPrice: parseFloat(change.oldCostPrice),
+        oldSellingPrice: parseFloat(change.oldSellingPrice),
+        newCostPrice: parseFloat(change.newCostPrice),
+        newSellingPrice: parseFloat(change.newSellingPrice),
         changedAt: new Date().toISOString(),
         changedDate: today
-      });
+      }]);
 
+    if (error) throw error;
+    
     console.log('✅ Price change recorded');
     return true;
   } catch (error) {
@@ -150,7 +215,6 @@ export const recordPriceChange = async (shop, materialId, variantIndex, change) 
   }
 };
 
-// Load sales report
 export const loadSalesReport = async (shop, dateFilter = 'all') => {
   try {
     let query = supabase
