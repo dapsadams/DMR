@@ -3,7 +3,6 @@ import { supabase } from '../supabaseClient';
 export const syncMaterials = async (shop, materials) => {
   try {
     console.log('🔄 Starting sync for shop:', shop);
-    console.log('📦 Materials to sync:', materials);
 
     if (!materials || materials.length === 0) {
       console.log('⚠️ No materials to sync');
@@ -18,38 +17,35 @@ export const syncMaterials = async (shop, materials) => {
         shop: shop,
         name: material.name,
         category: material.category,
-        categoryEmoji: material.categoryEmoji || '📦',
         unit: material.unit || 'yards',
         lowStockWarning: material.lowStockWarning || 5,
-        variants: JSON.stringify(material.variants || []),
-        updatedAt: new Date().toISOString()
+        variants: JSON.stringify(material.variants || [])
       };
 
       console.log('📋 Payload:', payloadData);
 
+      // Try insert first
       const { data, error } = await supabase
         .from('materials')
-        .insert([payloadData])
-        .select();
+        .insert([payloadData]);
 
       if (error) {
-        console.error('❌ Insert error:', error);
+        console.log('⚠️ Insert failed, trying update...');
         
-        // Try update if insert fails
-        const { data: updateData, error: updateError } = await supabase
+        // If insert fails, try update
+        const { error: updateError } = await supabase
           .from('materials')
           .update(payloadData)
-          .eq('id', material.id)
-          .select();
+          .eq('id', material.id);
 
         if (updateError) {
-          console.error('❌ Update error:', updateError);
+          console.error('❌ Both insert and update failed:', updateError);
           throw updateError;
         }
         
         console.log('✅ Updated existing material');
       } else {
-        console.log('✅ Inserted new material:', data);
+        console.log('✅ Inserted new material');
       }
     }
     
@@ -72,7 +68,7 @@ export const loadMaterialsFromCloud = async (shop) => {
 
     if (error) {
       console.error('❌ Load error:', error);
-      throw error;
+      return [];
     }
 
     console.log('✅ Loaded from cloud:', data?.length || 0, 'materials');
@@ -95,26 +91,23 @@ export const syncCategories = async (shop, categories) => {
     console.log('🔄 Syncing categories for shop:', shop);
 
     for (const category of categories) {
+      const payloadData = {
+        id: `${shop}_${category.name}`,
+        shop: shop,
+        name: category.name,
+        emoji: category.emoji
+      };
+
       const { error } = await supabase
         .from('categories')
-        .insert([{
-          id: `${shop}_${category.name}`,
-          shop: shop,
-          name: category.name,
-          emoji: category.emoji,
-          createdAt: category.createdAt || new Date().toISOString()
-        }])
-        .select();
+        .insert([payloadData]);
 
       if (error) {
-        console.error('❌ Category insert error:', error);
+        console.log('⚠️ Category insert failed, trying update...');
         
-        // Try update
         await supabase
           .from('categories')
-          .update({
-            emoji: category.emoji
-          })
+          .update(payloadData)
           .eq('id', `${shop}_${category.name}`);
       }
     }
@@ -136,12 +129,14 @@ export const loadCategoriesFromCloud = async (shop) => {
       .select('*')
       .eq('shop', shop);
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Load error:', error);
+      return [];
+    }
 
     const formatted = data?.map(item => ({
       name: item.name,
-      emoji: item.emoji,
-      createdAt: item.createdAt
+      emoji: item.emoji
     })) || [];
 
     console.log('✅ Loaded categories:', formatted.length);
