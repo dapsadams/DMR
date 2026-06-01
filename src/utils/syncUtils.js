@@ -2,244 +2,142 @@ import { supabase } from '../supabaseClient';
 
 export const syncMaterials = async (shop, materials) => {
   try {
-    console.log('🔄 Starting sync for shop:', shop);
-
-    if (!materials || materials.length === 0) {
-      console.log('⚠️ No materials to sync');
-      return true;
-    }
+    console.log('🔄 Syncing materials...');
 
     for (const material of materials) {
-      console.log('📤 Syncing material:', material.name);
-      
-      const payloadData = {
-        id: material.id,
-        shop: shop,
-        name: material.name,
-        category: material.category,
-        unit: material.unit || 'yards',
-        lowStockWarning: material.lowStockWarning || 5,
-        variants: JSON.stringify(material.variants || [])
-      };
-
-      console.log('📋 Payload:', payloadData);
-
-      // Try insert first
-      const { data, error } = await supabase
+      // Only send columns we know exist
+      const { error } = await supabase
         .from('materials')
-        .insert([payloadData]);
+        .insert([{
+          id: material.id,
+          shop: shop,
+          name: material.name,
+          category: material.category,
+          unit: material.unit,
+          variants: JSON.stringify(material.variants)
+        }])
+        .select();
 
       if (error) {
-        console.log('⚠️ Insert failed, trying update...');
-        
-        // If insert fails, try update
-        const { error: updateError } = await supabase
+        console.log('Insert failed, updating...');
+        await supabase
           .from('materials')
-          .update(payloadData)
+          .update({
+            name: material.name,
+            category: material.category,
+            variants: JSON.stringify(material.variants)
+          })
           .eq('id', material.id);
-
-        if (updateError) {
-          console.error('❌ Both insert and update failed:', updateError);
-          throw updateError;
-        }
-        
-        console.log('✅ Updated existing material');
-      } else {
-        console.log('✅ Inserted new material');
       }
     }
     
-    console.log('✅ All materials synced successfully');
+    console.log('✅ Sync complete');
     return true;
   } catch (error) {
-    console.error('❌ Sync failed:', error);
+    console.error('❌ Sync error:', error);
     return false;
   }
 };
 
 export const loadMaterialsFromCloud = async (shop) => {
   try {
-    console.log('📥 Loading materials from cloud for shop:', shop);
-    
     const { data, error } = await supabase
       .from('materials')
       .select('*')
       .eq('shop', shop);
 
-    if (error) {
-      console.error('❌ Load error:', error);
-      return [];
-    }
+    if (error) return [];
 
-    console.log('✅ Loaded from cloud:', data?.length || 0, 'materials');
-    
-    // Parse variants if they're JSON strings
-    const parsed = data?.map(item => ({
+    return data?.map(item => ({
       ...item,
       variants: typeof item.variants === 'string' ? JSON.parse(item.variants) : item.variants
     })) || [];
-
-    return parsed;
   } catch (error) {
-    console.error('❌ Load error:', error);
     return [];
   }
 };
 
 export const syncCategories = async (shop, categories) => {
   try {
-    console.log('🔄 Syncing categories for shop:', shop);
-
-    for (const category of categories) {
-      const payloadData = {
-        id: `${shop}_${category.name}`,
-        shop: shop,
-        name: category.name,
-        emoji: category.emoji
-      };
-
-      const { error } = await supabase
+    for (const cat of categories) {
+      await supabase
         .from('categories')
-        .insert([payloadData]);
-
-      if (error) {
-        console.log('⚠️ Category insert failed, trying update...');
-        
-        await supabase
-          .from('categories')
-          .update(payloadData)
-          .eq('id', `${shop}_${category.name}`);
-      }
+        .insert([{
+          id: `${shop}_${cat.name}`,
+          shop,
+          name: cat.name,
+          emoji: cat.emoji
+        }])
+        .select();
     }
-    
-    console.log('✅ Categories synced');
     return true;
   } catch (error) {
-    console.error('❌ Category sync error:', error);
     return false;
   }
 };
 
 export const loadCategoriesFromCloud = async (shop) => {
   try {
-    console.log('📥 Loading categories for shop:', shop);
-    
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('categories')
       .select('*')
       .eq('shop', shop);
-
-    if (error) {
-      console.error('❌ Load error:', error);
-      return [];
-    }
-
-    const formatted = data?.map(item => ({
-      name: item.name,
-      emoji: item.emoji
-    })) || [];
-
-    console.log('✅ Loaded categories:', formatted.length);
-    return formatted;
+    
+    return data?.map(d => ({ name: d.name, emoji: d.emoji })) || [];
   } catch (error) {
-    console.error('❌ Load categories error:', error);
     return [];
   }
 };
 
-export const recordSaleToCloud = async (shop, saleRecord) => {
+export const recordSaleToCloud = async (shop, sale) => {
   try {
-    console.log('💰 Recording sale to cloud');
-
-    const today = new Date().toISOString().split('T')[0];
-
-    const { error } = await supabase
-      .from('sales')
-      .insert([{
-        id: saleRecord.id,
-        shop: shop,
-        materialId: saleRecord.materialId,
-        materialName: saleRecord.materialName,
-        color: saleRecord.color,
-        quantity: saleRecord.quantity,
-        reason: saleRecord.reason,
-        costPrice: parseFloat(saleRecord.costPrice),
-        sellingPrice: parseFloat(saleRecord.sellingPrice),
-        timestamp: saleRecord.timestamp,
-        date: today
-      }]);
-
-    if (error) throw error;
-    
-    console.log('✅ Sale recorded');
+    await supabase.from('sales').insert([{
+      id: sale.id,
+      shop,
+      materialId: sale.materialId,
+      materialName: sale.materialName,
+      color: sale.color,
+      quantity: sale.quantity,
+      reason: sale.reason,
+      costPrice: sale.costPrice,
+      sellingPrice: sale.sellingPrice,
+      timestamp: sale.timestamp,
+      date: new Date().toISOString().split('T')[0]
+    }]);
     return true;
   } catch (error) {
-    console.error('❌ Sale record error:', error);
     return false;
   }
 };
 
 export const recordPriceChange = async (shop, materialId, variantIndex, change) => {
   try {
-    console.log('📊 Recording price change');
-
-    const today = new Date().toISOString().split('T')[0];
-
-    const { error } = await supabase
-      .from('price_history')
-      .insert([{
-        id: `${materialId}_${variantIndex}_${Date.now()}`,
-        shop: shop,
-        materialId: materialId,
-        variantIndex: variantIndex,
-        oldCostPrice: parseFloat(change.oldCostPrice),
-        oldSellingPrice: parseFloat(change.oldSellingPrice),
-        newCostPrice: parseFloat(change.newCostPrice),
-        newSellingPrice: parseFloat(change.newSellingPrice),
-        changedAt: new Date().toISOString(),
-        changedDate: today
-      }]);
-
-    if (error) throw error;
-    
-    console.log('✅ Price change recorded');
+    await supabase.from('price_history').insert([{
+      id: `${materialId}_${variantIndex}_${Date.now()}`,
+      shop,
+      materialId,
+      variantIndex,
+      oldCostPrice: change.oldCostPrice,
+      oldSellingPrice: change.oldSellingPrice,
+      newCostPrice: change.newCostPrice,
+      newSellingPrice: change.newSellingPrice,
+      changedAt: new Date().toISOString(),
+      changedDate: new Date().toISOString().split('T')[0]
+    }]);
     return true;
   } catch (error) {
-    console.error('❌ Price history error:', error);
     return false;
   }
 };
 
-export const loadSalesReport = async (shop, dateFilter = 'all') => {
+export const loadSalesReport = async (shop) => {
   try {
-    let query = supabase
+    const { data } = await supabase
       .from('sales')
       .select('*')
-      .eq('shop', shop)
-      .eq('reason', 'Sold');
-
-    if (dateFilter === 'today') {
-      const today = new Date().toISOString().split('T')[0];
-      query = query.eq('date', today);
-    } else if (dateFilter === 'week') {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split('T')[0];
-      query = query.gte('date', sevenDaysAgo);
-    } else if (dateFilter === 'month') {
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split('T')[0];
-      query = query.gte('date', thirtyDaysAgo);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-
+      .eq('shop', shop);
     return data || [];
   } catch (error) {
-    console.error('❌ Sales report error:', error);
     return [];
   }
 };
