@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { syncCategoryToFirebase, loadCategoriesFromFirebase } from '../utils/firebaseSync';
+import { syncCategoriesToFirebase, loadCategoriesFromFirebase } from '../utils/firebaseSync';
 
 function AddMaterial({ shop }) {
   const [formData, setFormData] = useState({
@@ -11,6 +11,7 @@ function AddMaterial({ shop }) {
   });
   const [categories, setCategories] = useState([]);
   const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const STORAGE_KEY = `materials_${shop}`;
   const CATEGORIES_KEY = `categories_${shop}`;
@@ -27,26 +28,32 @@ function AddMaterial({ shop }) {
       if (firebaseCategories && firebaseCategories.length > 0) {
         setCategories(firebaseCategories);
         localStorage.setItem(CATEGORIES_KEY, JSON.stringify(firebaseCategories));
+        if (!formData.category) {
+          setFormData(prev => ({ ...prev, category: firebaseCategories[0].name }));
+        }
       } else {
         // Fall back to localStorage
         const stored = localStorage.getItem(CATEGORIES_KEY);
         const cats = stored ? JSON.parse(stored) : [];
         setCategories(cats);
-      }
-
-      if (firebaseCategories.length > 0 && !formData.category) {
-        setFormData(prev => ({ ...prev, category: firebaseCategories[0].name }));
+        if (cats.length > 0 && !formData.category) {
+          setFormData(prev => ({ ...prev, category: cats[0].name }));
+        }
       }
     } catch (error) {
       console.error('Load categories error:', error);
       const stored = localStorage.getItem(CATEGORIES_KEY);
       const cats = stored ? JSON.parse(stored) : [];
       setCategories(cats);
+      if (cats.length > 0 && !formData.category) {
+        setFormData(prev => ({ ...prev, category: cats[0].name }));
+      }
     }
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    setErrorMessage('');
     setFormData(prev => ({
       ...prev,
       [name]: name === 'lowStockWarning' ? parseInt(value) : value
@@ -54,6 +61,7 @@ function AddMaterial({ shop }) {
   };
 
   const handleVariantChange = (index, field, value) => {
+    setErrorMessage('');
     const newVariants = [...formData.variants];
     newVariants[index] = {
       ...newVariants[index],
@@ -90,16 +98,40 @@ function AddMaterial({ shop }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage('');
 
-    if (
-      !formData.name ||
-      !formData.category ||
-      formData.variants.some(v => !v.color || v.costPrice === 0 || v.sellingPrice === 0)
-    ) {
-      alert('Please fill all required fields:\n- Material name\n- Category\n- Color name\n- Cost Price\n- Selling Price');
+    // Detailed validation
+    if (!formData.name || formData.name.trim() === '') {
+      setErrorMessage('❌ Material Name is required');
       return;
     }
 
+    if (!formData.category || formData.category.trim() === '') {
+      setErrorMessage('❌ Category is required');
+      return;
+    }
+
+    // Check variants
+    for (let i = 0; i < formData.variants.length; i++) {
+      const v = formData.variants[i];
+      
+      if (!v.color || v.color.trim() === '') {
+        setErrorMessage(`❌ Color Name is required for variant ${i + 1}`);
+        return;
+      }
+
+      if (v.costPrice <= 0) {
+        setErrorMessage(`❌ Cost Price must be greater than 0 for ${v.color}`);
+        return;
+      }
+
+      if (v.sellingPrice <= 0) {
+        setErrorMessage(`❌ Selling Price must be greater than 0 for ${v.color}`);
+        return;
+      }
+    }
+
+    // All validation passed
     const newMaterial = {
       id: Date.now(),
       name: formData.name,
@@ -118,6 +150,7 @@ function AddMaterial({ shop }) {
     materials.push(newMaterial);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(materials));
 
+    // Sync to Firebase (will happen automatically via Inventory.js)
     setSuccessMessage('✅ Material added successfully!');
     setFormData({
       name: '',
@@ -134,6 +167,7 @@ function AddMaterial({ shop }) {
     <div className="add-material-container">
       <h2>➕ Add New Material</h2>
       {successMessage && <div className="success-message">{successMessage}</div>}
+      {errorMessage && <div className="error-message">{errorMessage}</div>}
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
