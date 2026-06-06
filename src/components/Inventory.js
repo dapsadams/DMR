@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import StockRemovalModal from './StockRemovalModal';
 import EditPriceModal from './EditPriceModal';
-import { syncMaterials, loadMaterialsFromCloud, recordSaleToCloud } from '../utils/syncUtils';
+import { syncMaterialsToFirebase, loadMaterialsFromFirebase, recordSaleToFirebase } from '../utils/firebaseSync';
 
 function Inventory({ shop }) {
   const [materials, setMaterials] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [stats, setStats] = useState({ total: 0, lowStock: 0, outOfStock: 0 });
-  const [syncStatus, setSyncStatus] = useState('online'); // 'online', 'syncing', 'offline'
+  const [syncStatus, setSyncStatus] = useState('online');
   const [modal, setModal] = useState({
     active: false,
     materialId: null,
@@ -26,48 +26,49 @@ function Inventory({ shop }) {
 
   const STORAGE_KEY = `materials_${shop}`;
   const CATEGORIES_KEY = `categories_${shop}`;
-  const LAST_SYNC_KEY = `lastSync_${shop}`;
 
-  // Load materials from cloud on mount
+  // Load on mount
   useEffect(() => {
     loadMaterials();
-    
-    // Auto-sync every 30 seconds
-    const syncInterval = setInterval(() => {
-      if (materials.length > 0) {
-        syncToCloud();
-      }
-    }, 30000);
-
-    return () => clearInterval(syncInterval);
   }, [shop]);
 
-  // Sync materials whenever they change
+  // Sync whenever materials change
   useEffect(() => {
     if (materials.length > 0) {
-      // Save to localStorage immediately
+      // Save locally first
       localStorage.setItem(STORAGE_KEY, JSON.stringify(materials));
       
-      // Sync to cloud in background
-      syncToCloud();
+      // Sync to Firebase
+      syncToFirebase();
     }
   }, [materials]);
+
+  const syncToFirebase = async () => {
+    try {
+      setSyncStatus('syncing');
+      const success = await syncMaterialsToFirebase(shop, materials);
+      setSyncStatus(success ? 'online' : 'offline');
+    } catch (error) {
+      console.error('Sync error:', error);
+      setSyncStatus('offline');
+    }
+  };
 
   const loadMaterials = async () => {
     try {
       setSyncStatus('syncing');
       
-      // Try to load from cloud first
-      const cloudMaterials = await loadMaterialsFromCloud(shop);
+      // Try Firebase first
+      const firebaseMaterials = await loadMaterialsFromFirebase(shop);
       
-      if (cloudMaterials && cloudMaterials.length > 0) {
-        // Cloud has data, use it
-        setMaterials(cloudMaterials);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudMaterials));
-        updateStats(cloudMaterials);
+      if (firebaseMaterials && firebaseMaterials.length > 0) {
+        // Firebase has data
+        setMaterials(firebaseMaterials);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(firebaseMaterials));
+        updateStats(firebaseMaterials);
         setSyncStatus('online');
       } else {
-        // No cloud data, load from localStorage
+        // Fall back to localStorage
         const stored = localStorage.getItem(STORAGE_KEY);
         const items = stored ? JSON.parse(stored) : [];
         setMaterials(items);
@@ -76,35 +77,13 @@ function Inventory({ shop }) {
       }
     } catch (error) {
       console.error('Load error:', error);
-      // No internet, use localStorage
+      // Use localStorage on error
       const stored = localStorage.getItem(STORAGE_KEY);
       const items = stored ? JSON.parse(stored) : [];
       setMaterials(items);
       updateStats(items);
       setSyncStatus('offline');
     }
-  };
-
-  const syncToCloud = async () => {
-    try {
-      setSyncStatus('syncing');
-      const success = await syncMaterials(shop, materials);
-      
-      if (success) {
-        setSyncStatus('online');
-        localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
-      } else {
-        setSyncStatus('offline');
-      }
-    } catch (error) {
-      console.error('Sync error:', error);
-      setSyncStatus('offline');
-    }
-  };
-
-  const loadCategories = () => {
-    const stored = localStorage.getItem(CATEGORIES_KEY);
-    const cats = stored ? JSON.parse(stored) : [];
   };
 
   const updateStats = (items) => {
@@ -212,9 +191,9 @@ function Inventory({ shop }) {
     history.push(saleRecord);
     localStorage.setItem(SALES_HISTORY_KEY, JSON.stringify(history));
 
-    // Sync sale to cloud
+    // Sync to Firebase
     try {
-      await recordSaleToCloud(shop, saleRecord);
+      await recordSaleToFirebase(shop, saleRecord);
     } catch (error) {
       console.error('Sale sync error:', error);
     }
@@ -234,7 +213,6 @@ function Inventory({ shop }) {
     setModal({ active: false, materialId: null, variantIndex: null, reason: null });
   };
 
-  // Bulk Edit Functions
   const toggleMaterialSelection = (materialId) => {
     setSelectedMaterials(prev =>
       prev.includes(materialId)
@@ -319,7 +297,6 @@ function Inventory({ shop }) {
 
   const uniqueCategories = ['All', ...new Set(materials.map(m => m.category))];
 
-  // Sync Status Indicator
   const getSyncStatusDisplay = () => {
     switch (syncStatus) {
       case 'online':
@@ -337,7 +314,6 @@ function Inventory({ shop }) {
 
   return (
     <>
-      {/* Sync Status Bar */}
       <div className="sync-status-bar" style={{ borderLeftColor: syncDisplay.color }}>
         <span className="sync-icon">{syncDisplay.icon}</span>
         <span className="sync-text">{syncDisplay.text}</span>
@@ -362,7 +338,6 @@ function Inventory({ shop }) {
         </div>
       </div>
 
-      {/* Bulk Edit Section */}
       <div className="bulk-edit-section">
         <button 
           className={`bulk-toggle-btn ${bulkMode ? 'active' : ''}`}
@@ -560,5 +535,3 @@ function Inventory({ shop }) {
 }
 
 export default Inventory;
-
-// daps?

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { syncCategories, loadCategoriesFromCloud } from '../utils/syncUtils';
+import { syncCategoriesToFirebase, loadCategoriesFromFirebase } from '../utils/firebaseSync';
 
 function CategoryManagement({ shop }) {
   const [categories, setCategories] = useState([]);
@@ -29,21 +29,18 @@ function CategoryManagement({ shop }) {
 
   const loadCategories = async () => {
     try {
-      // Try cloud first
-      const cloudCategories = await loadCategoriesFromCloud(shop);
+      const firebaseCategories = await loadCategoriesFromFirebase(shop);
       
-      if (cloudCategories && cloudCategories.length > 0) {
-        setCategories(cloudCategories);
-        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(cloudCategories));
+      if (firebaseCategories && firebaseCategories.length > 0) {
+        setCategories(firebaseCategories);
+        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(firebaseCategories));
       } else {
-        // Fallback to localStorage
         const stored = localStorage.getItem(CATEGORIES_KEY);
         const cats = stored ? JSON.parse(stored) : [];
         setCategories(cats);
       }
     } catch (error) {
       console.error('Load categories error:', error);
-      // Use localStorage on error
       const stored = localStorage.getItem(CATEGORIES_KEY);
       const cats = stored ? JSON.parse(stored) : [];
       setCategories(cats);
@@ -71,9 +68,9 @@ function CategoryManagement({ shop }) {
     setCategories(newCategories);
     localStorage.setItem(CATEGORIES_KEY, JSON.stringify(newCategories));
 
-    // Sync to cloud
+    // Sync to Firebase
     try {
-      await syncCategories(shop, newCategories);
+      await syncCategoriesToFirebase(shop, newCategories);
     } catch (error) {
       console.error('Cloud sync error:', error);
     }
@@ -88,9 +85,8 @@ function CategoryManagement({ shop }) {
       setCategories(newCategories);
       localStorage.setItem(CATEGORIES_KEY, JSON.stringify(newCategories));
 
-      // Sync to cloud
       try {
-        await syncCategories(shop, newCategories);
+        await syncCategoriesToFirebase(shop, newCategories);
       } catch (error) {
         console.error('Cloud sync error:', error);
       }

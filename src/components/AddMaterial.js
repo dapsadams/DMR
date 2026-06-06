@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { syncMaterials, loadCategoriesFromCloud, syncCategories } from '../utils/syncUtils';
+import { syncCategoryToFirebase, loadCategoriesFromFirebase } from '../utils/firebaseSync';
 
 function AddMaterial({ shop }) {
   const [formData, setFormData] = useState({
@@ -11,7 +11,6 @@ function AddMaterial({ shop }) {
   });
   const [categories, setCategories] = useState([]);
   const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
 
   const STORAGE_KEY = `materials_${shop}`;
   const CATEGORIES_KEY = `categories_${shop}`;
@@ -22,39 +21,32 @@ function AddMaterial({ shop }) {
 
   const loadCategories = async () => {
     try {
-      // Try cloud first
-      const cloudCategories = await loadCategoriesFromCloud(shop);
+      // Try Firebase first
+      const firebaseCategories = await loadCategoriesFromFirebase(shop);
       
-      if (cloudCategories && cloudCategories.length > 0) {
-        setCategories(cloudCategories);
-        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(cloudCategories));
-        if (!formData.category) {
-          setFormData(prev => ({ ...prev, category: cloudCategories[0].name }));
-        }
+      if (firebaseCategories && firebaseCategories.length > 0) {
+        setCategories(firebaseCategories);
+        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(firebaseCategories));
       } else {
-        // Fallback to localStorage
+        // Fall back to localStorage
         const stored = localStorage.getItem(CATEGORIES_KEY);
         const cats = stored ? JSON.parse(stored) : [];
         setCategories(cats);
-        if (cats.length > 0 && !formData.category) {
-          setFormData(prev => ({ ...prev, category: cats[0].name }));
-        }
+      }
+
+      if (firebaseCategories.length > 0 && !formData.category) {
+        setFormData(prev => ({ ...prev, category: firebaseCategories[0].name }));
       }
     } catch (error) {
       console.error('Load categories error:', error);
-      // Use localStorage on error
       const stored = localStorage.getItem(CATEGORIES_KEY);
       const cats = stored ? JSON.parse(stored) : [];
       setCategories(cats);
-      if (cats.length > 0 && !formData.category) {
-        setFormData(prev => ({ ...prev, category: cats[0].name }));
-      }
     }
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setErrorMessage('');
     setFormData(prev => ({
       ...prev,
       [name]: name === 'lowStockWarning' ? parseInt(value) : value
@@ -62,7 +54,6 @@ function AddMaterial({ shop }) {
   };
 
   const handleVariantChange = (index, field, value) => {
-    setErrorMessage('');
     const newVariants = [...formData.variants];
     newVariants[index] = {
       ...newVariants[index],
@@ -99,40 +90,16 @@ function AddMaterial({ shop }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorMessage('');
 
-    // Detailed validation
-    if (!formData.name || formData.name.trim() === '') {
-      setErrorMessage('❌ Material Name is required');
+    if (
+      !formData.name ||
+      !formData.category ||
+      formData.variants.some(v => !v.color || v.costPrice === 0 || v.sellingPrice === 0)
+    ) {
+      alert('Please fill all required fields:\n- Material name\n- Category\n- Color name\n- Cost Price\n- Selling Price');
       return;
     }
 
-    if (!formData.category || formData.category.trim() === '') {
-      setErrorMessage('❌ Category is required');
-      return;
-    }
-
-    // Check variants
-    for (let i = 0; i < formData.variants.length; i++) {
-      const v = formData.variants[i];
-      
-      if (!v.color || v.color.trim() === '') {
-        setErrorMessage(`❌ Color Name is required for variant ${i + 1}`);
-        return;
-      }
-
-      if (v.costPrice <= 0) {
-        setErrorMessage(`❌ Cost Price must be greater than 0 for ${v.color}`);
-        return;
-      }
-
-      if (v.sellingPrice <= 0) {
-        setErrorMessage(`❌ Selling Price must be greater than 0 for ${v.color}`);
-        return;
-      }
-    }
-
-    // All validation passed
     const newMaterial = {
       id: Date.now(),
       name: formData.name,
@@ -151,13 +118,6 @@ function AddMaterial({ shop }) {
     materials.push(newMaterial);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(materials));
 
-    // Sync to cloud
-    try {
-      await syncMaterials(shop, [newMaterial]);
-    } catch (error) {
-      console.error('Cloud sync error:', error);
-    }
-
     setSuccessMessage('✅ Material added successfully!');
     setFormData({
       name: '',
@@ -174,7 +134,6 @@ function AddMaterial({ shop }) {
     <div className="add-material-container">
       <h2>➕ Add New Material</h2>
       {successMessage && <div className="success-message">{successMessage}</div>}
-      {errorMessage && <div className="error-message">{errorMessage}</div>}
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
@@ -233,7 +192,6 @@ function AddMaterial({ shop }) {
           {formData.variants.map((variant, idx) => (
             <div key={idx} className="color-variant-section">
               
-              {/* Color Name */}
               <div className="form-group">
                 <label>Color Name * (Variant {idx + 1})</label>
                 <input
@@ -245,7 +203,6 @@ function AddMaterial({ shop }) {
                 />
               </div>
 
-              {/* Color Picker */}
               <div className="form-group full-width">
                 <label>🎨 Pick Color</label>
                 <div className="color-picker-section">
@@ -262,7 +219,6 @@ function AddMaterial({ shop }) {
                 </div>
               </div>
 
-              {/* Quantity */}
               <div className="form-group">
                 <label>📦 Initial Quantity</label>
                 <input
@@ -274,7 +230,6 @@ function AddMaterial({ shop }) {
                 />
               </div>
 
-              {/* Cost Price */}
               <div className="form-group">
                 <label>💰 Cost Price (₦) - What you paid *</label>
                 <input
@@ -288,7 +243,6 @@ function AddMaterial({ shop }) {
                 />
               </div>
 
-              {/* Selling Price */}
               <div className="form-group">
                 <label>🏷️ Selling Price (₦) - What you charge customers *</label>
                 <input
@@ -302,7 +256,6 @@ function AddMaterial({ shop }) {
                 />
               </div>
 
-              {/* Profit Preview */}
               <div className="form-group full-width">
                 <label>💵 Your Profit Per Unit (Auto-calculated)</label>
                 <div className="profit-display">
@@ -310,7 +263,6 @@ function AddMaterial({ shop }) {
                 </div>
               </div>
 
-              {/* Remove Button */}
               {formData.variants.length > 1 && (
                 <button
                   type="button"
