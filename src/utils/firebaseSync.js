@@ -1,24 +1,26 @@
 import { database } from '../firebaseConfig';
-import { ref, set, get, remove, update } from 'firebase/database';
+import { ref, set, get, update } from 'firebase/database';
 
 // Sync materials to Firebase
 export const syncMaterialsToFirebase = async (shop, materials) => {
   try {
-    console.log('🔄 Syncing to Firebase...');
+    console.log('🔄 Syncing to Firebase...', materials.length, 'materials');
     
-    const materialsRef = ref(database, `${shop}/materials`);
-    
-    // Convert to object for Firebase
+    // Create object of materials by ID
     const materialsObj = {};
     materials.forEach(material => {
       materialsObj[material.id] = material;
     });
 
+    const materialsRef = ref(database, `${shop}/materials`);
+    
+    // Use SET to replace entire materials object
     await set(materialsRef, materialsObj);
-    console.log('✅ Materials synced to Firebase');
+    
+    console.log('✅ Materials synced:', materials.length);
     return true;
   } catch (error) {
-    console.error('❌ Firebase sync error:', error);
+    console.error('❌ Firebase sync error:', error.message);
     return false;
   }
 };
@@ -33,6 +35,9 @@ export const loadMaterialsFromFirebase = async (shop) => {
 
     if (snapshot.exists()) {
       const data = snapshot.val();
+      console.log('📦 Raw data:', data);
+      
+      // Convert object to array
       const materials = Object.values(data);
       console.log('✅ Loaded', materials.length, 'materials');
       return materials;
@@ -41,7 +46,7 @@ export const loadMaterialsFromFirebase = async (shop) => {
     console.log('⚠️ No materials in Firebase');
     return [];
   } catch (error) {
-    console.error('❌ Firebase load error:', error);
+    console.error('❌ Firebase load error:', error.message);
     return [];
   }
 };
@@ -51,18 +56,18 @@ export const syncCategoriesToFirebase = async (shop, categories) => {
   try {
     console.log('🔄 Syncing categories...');
     
-    const categoriesRef = ref(database, `${shop}/categories`);
     const categoriesObj = {};
-    
     categories.forEach(cat => {
       categoriesObj[cat.name] = cat;
     });
 
+    const categoriesRef = ref(database, `${shop}/categories`);
     await set(categoriesRef, categoriesObj);
+    
     console.log('✅ Categories synced');
     return true;
   } catch (error) {
-    console.error('❌ Category sync error:', error);
+    console.error('❌ Category sync error:', error.message);
     return false;
   }
 };
@@ -80,7 +85,7 @@ export const loadCategoriesFromFirebase = async (shop) => {
 
     return [];
   } catch (error) {
-    console.error('❌ Load categories error:', error);
+    console.error('❌ Load categories error:', error.message);
     return [];
   }
 };
@@ -97,7 +102,7 @@ export const recordSaleToFirebase = async (shop, sale) => {
     console.log('✅ Sale recorded');
     return true;
   } catch (error) {
-    console.error('❌ Sale error:', error);
+    console.error('❌ Sale error:', error.message);
     return false;
   }
 };
@@ -116,7 +121,7 @@ export const recordPriceChangeToFirebase = async (shop, materialId, variantIndex
     console.log('✅ Price change recorded');
     return true;
   } catch (error) {
-    console.error('❌ Price history error:', error);
+    console.error('❌ Price history error:', error.message);
     return false;
   }
 };
@@ -142,7 +147,7 @@ export const loadSalesReportFromFirebase = async (shop) => {
 
     return [];
   } catch (error) {
-    console.error('❌ Sales report error:', error);
+    console.error('❌ Sales report error:', error.message);
     return [];
   }
 };
