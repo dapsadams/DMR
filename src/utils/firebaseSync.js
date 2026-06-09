@@ -1,15 +1,31 @@
 import { database } from '../firebaseConfig';
 import { ref, set, get } from 'firebase/database';
 
+let lastSyncedData = {};
+
 export const syncMaterialsToFirebase = async (shop, materials) => {
   try {
-    if (!materials || materials.length === 0) return true;
-
+    const currentHash = JSON.stringify(
+      materials.map(m => ({ 
+        id: m.id, 
+        qty: m.variants.map(v => v.quantity) 
+      }))
+    );
+    
+    if (lastSyncedData[shop] === currentHash) {
+      console.log('⏭️ No changes, skipping sync');
+      return true;
+    }
+    
+    console.log('🔄 Syncing to Firebase...', materials.length, 'materials');
+    
     for (const material of materials) {
       const materialRef = ref(database, `${shop}/materials/${material.id}`);
       await set(materialRef, material);
     }
     
+    lastSyncedData[shop] = currentHash;
+    console.log('✅ Sync complete');
     return true;
   } catch (error) {
     console.error('❌ Sync error:', error);
@@ -23,7 +39,9 @@ export const loadMaterialsFromFirebase = async (shop) => {
     const snapshot = await get(materialsRef);
 
     if (snapshot.exists()) {
-      return Object.values(snapshot.val()).filter(m => m);
+      const data = Object.values(snapshot.val()).filter(m => m);
+      console.log('✅ Loaded', data.length, 'materials from Firebase');
+      return data;
     }
     return [];
   } catch (error) {
@@ -65,9 +83,28 @@ export const recordSaleToFirebase = async (shop, sale) => {
     const today = new Date().toISOString().split('T')[0];
     const saleRef = ref(database, `${shop}/sales/${today}/${sale.id}`);
     await set(saleRef, sale);
+    console.log('✅ Sale recorded');
     return true;
   } catch (error) {
     console.error('❌ Sale error:', error);
+    return false;
+  }
+};
+
+export const recordPriceChangeToFirebase = async (shop, materialId, variantIndex, change) => {
+  try {
+    console.log('📊 Recording price change...');
+    
+    const priceRef = ref(database, `${shop}/priceHistory/${materialId}_${variantIndex}_${Date.now()}`);
+    
+    await set(priceRef, {
+      ...change,
+      changedAt: new Date().toISOString()
+    });
+    console.log('✅ Price change recorded');
+    return true;
+  } catch (error) {
+    console.error('❌ Price history error:', error);
     return false;
   }
 };

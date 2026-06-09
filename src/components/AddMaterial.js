@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { syncCategoriesToFirebase, loadCategoriesFromFirebase } from '../utils/firebaseSync';
+import { syncMaterialsToFirebase, loadCategoriesFromFirebase } from '../utils/firebaseSync';
 
 function AddMaterial({ shop }) {
   const [formData, setFormData] = useState({
@@ -22,7 +22,6 @@ function AddMaterial({ shop }) {
 
   const loadCategories = async () => {
     try {
-      // Try Firebase first
       const firebaseCategories = await loadCategoriesFromFirebase(shop);
       
       if (firebaseCategories && firebaseCategories.length > 0) {
@@ -32,7 +31,6 @@ function AddMaterial({ shop }) {
           setFormData(prev => ({ ...prev, category: firebaseCategories[0].name }));
         }
       } else {
-        // Fall back to localStorage
         const stored = localStorage.getItem(CATEGORIES_KEY);
         const cats = stored ? JSON.parse(stored) : [];
         setCategories(cats);
@@ -100,7 +98,6 @@ function AddMaterial({ shop }) {
     e.preventDefault();
     setErrorMessage('');
 
-    // Detailed validation
     if (!formData.name || formData.name.trim() === '') {
       setErrorMessage('❌ Material Name is required');
       return;
@@ -111,7 +108,6 @@ function AddMaterial({ shop }) {
       return;
     }
 
-    // Check variants
     for (let i = 0; i < formData.variants.length; i++) {
       const v = formData.variants[i];
       
@@ -131,7 +127,6 @@ function AddMaterial({ shop }) {
       }
     }
 
-    // All validation passed
     const newMaterial = {
       id: Date.now(),
       name: formData.name,
@@ -144,13 +139,18 @@ function AddMaterial({ shop }) {
       createdAt: new Date().toISOString()
     };
 
-    // Save to localStorage
     const stored = localStorage.getItem(STORAGE_KEY);
     const materials = stored ? JSON.parse(stored) : [];
     materials.push(newMaterial);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(materials));
 
-    // Sync to Firebase (will happen automatically via Inventory.js)
+    try {
+      await syncMaterialsToFirebase(shop, materials);
+      console.log('✅ Material synced to Firebase');
+    } catch (error) {
+      console.error('Sync error:', error);
+    }
+
     setSuccessMessage('✅ Material added successfully!');
     setFormData({
       name: '',

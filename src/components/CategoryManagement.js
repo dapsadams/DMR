@@ -9,18 +9,7 @@ function CategoryManagement({ shop }) {
   const CATEGORIES_KEY = `categories_${shop}`;
 
   const emojis = [
-    '📦',
-    '🧵',
-    '🎀',
-    '🪢',
-    '🎨',
-    '✨',
-    '👗',
-    '🌸',
-    '💎',
-    '🎭',
-    '🏷️',
-    '🎁'
+    '📦', '🧵', '🎀', '🪢', '🎨', '✨', '👗', '🌸', '💎', '🎭', '🏷️', '🎁'
   ];
 
   useEffect(() => {
@@ -68,7 +57,6 @@ function CategoryManagement({ shop }) {
     setCategories(newCategories);
     localStorage.setItem(CATEGORIES_KEY, JSON.stringify(newCategories));
 
-    // Sync to Firebase
     try {
       await syncCategoriesToFirebase(shop, newCategories);
     } catch (error) {

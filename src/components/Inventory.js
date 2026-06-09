@@ -32,14 +32,18 @@ function Inventory({ shop }) {
     loadMaterials();
   }, [shop]);
 
-  // Sync whenever materials change
+  // Sync when materials change (debounced)
   useEffect(() => {
     if (materials.length > 0) {
-      // Save locally first
+      // Save to localStorage immediately
       localStorage.setItem(STORAGE_KEY, JSON.stringify(materials));
       
-      // Sync to Firebase
-      syncToFirebase();
+      // Debounce Firebase sync (wait 2 seconds before syncing)
+      const syncTimeout = setTimeout(() => {
+        syncToFirebase();
+      }, 2000);
+      
+      return () => clearTimeout(syncTimeout);
     }
   }, [materials]);
 
