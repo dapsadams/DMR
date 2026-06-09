@@ -1,153 +1,73 @@
 import { database } from '../firebaseConfig';
-import { ref, set, get, update } from 'firebase/database';
+import { ref, set, get } from 'firebase/database';
 
-// Sync materials to Firebase
 export const syncMaterialsToFirebase = async (shop, materials) => {
   try {
-    console.log('🔄 Syncing to Firebase...', materials.length, 'materials');
-    
-    // Create object of materials by ID
-    const materialsObj = {};
-    materials.forEach(material => {
-      materialsObj[material.id] = material;
-    });
+    if (!materials || materials.length === 0) return true;
 
-    const materialsRef = ref(database, `${shop}/materials`);
+    for (const material of materials) {
+      const materialRef = ref(database, `${shop}/materials/${material.id}`);
+      await set(materialRef, material);
+    }
     
-    // Use SET to replace entire materials object
-    await set(materialsRef, materialsObj);
-    
-    console.log('✅ Materials synced:', materials.length);
     return true;
   } catch (error) {
-    console.error('❌ Firebase sync error:', error.message);
+    console.error('❌ Sync error:', error);
     return false;
   }
 };
 
-// Load materials from Firebase
 export const loadMaterialsFromFirebase = async (shop) => {
   try {
-    console.log('📥 Loading from Firebase...');
-    
     const materialsRef = ref(database, `${shop}/materials`);
     const snapshot = await get(materialsRef);
 
     if (snapshot.exists()) {
-      const data = snapshot.val();
-      console.log('📦 Raw data:', data);
-      
-      // Convert object to array
-      const materials = Object.values(data);
-      console.log('✅ Loaded', materials.length, 'materials');
-      return materials;
+      return Object.values(snapshot.val()).filter(m => m);
     }
-
-    console.log('⚠️ No materials in Firebase');
     return [];
   } catch (error) {
-    console.error('❌ Firebase load error:', error.message);
+    console.error('❌ Load error:', error);
     return [];
   }
 };
 
-// Sync categories
 export const syncCategoriesToFirebase = async (shop, categories) => {
   try {
-    console.log('🔄 Syncing categories...');
-    
-    const categoriesObj = {};
-    categories.forEach(cat => {
-      categoriesObj[cat.name] = cat;
-    });
-
-    const categoriesRef = ref(database, `${shop}/categories`);
-    await set(categoriesRef, categoriesObj);
-    
-    console.log('✅ Categories synced');
+    for (const cat of categories) {
+      const catRef = ref(database, `${shop}/categories/${cat.name}`);
+      await set(catRef, cat);
+    }
     return true;
   } catch (error) {
-    console.error('❌ Category sync error:', error.message);
+    console.error('❌ Category sync error:', error);
     return false;
   }
 };
 
-// Load categories
 export const loadCategoriesFromFirebase = async (shop) => {
   try {
     const categoriesRef = ref(database, `${shop}/categories`);
     const snapshot = await get(categoriesRef);
 
     if (snapshot.exists()) {
-      const data = snapshot.val();
-      return Object.values(data);
+      return Object.values(snapshot.val()).filter(c => c);
     }
-
     return [];
   } catch (error) {
-    console.error('❌ Load categories error:', error.message);
+    console.error('❌ Load categories error:', error);
     return [];
   }
 };
 
-// Record sale
 export const recordSaleToFirebase = async (shop, sale) => {
   try {
-    console.log('💰 Recording sale...');
-    
     const today = new Date().toISOString().split('T')[0];
     const saleRef = ref(database, `${shop}/sales/${today}/${sale.id}`);
-    
     await set(saleRef, sale);
-    console.log('✅ Sale recorded');
     return true;
   } catch (error) {
-    console.error('❌ Sale error:', error.message);
+    console.error('❌ Sale error:', error);
     return false;
-  }
-};
-
-// Record price change
-export const recordPriceChangeToFirebase = async (shop, materialId, variantIndex, change) => {
-  try {
-    console.log('📊 Recording price change...');
-    
-    const priceRef = ref(database, `${shop}/priceHistory/${materialId}_${variantIndex}_${Date.now()}`);
-    
-    await set(priceRef, {
-      ...change,
-      changedAt: new Date().toISOString()
-    });
-    console.log('✅ Price change recorded');
-    return true;
-  } catch (error) {
-    console.error('❌ Price history error:', error.message);
-    return false;
-  }
-};
-
-// Load sales report
-export const loadSalesReportFromFirebase = async (shop) => {
-  try {
-    const salesRef = ref(database, `${shop}/sales`);
-    const snapshot = await get(salesRef);
-
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      const allSales = [];
-      
-      Object.keys(data).forEach(date => {
-        Object.values(data[date]).forEach(sale => {
-          allSales.push(sale);
-        });
-      });
-
-      return allSales;
-    }
-
-    return [];
-  } catch (error) {
-    console.error('❌ Sales report error:', error.message);
-    return [];
   }
 };
